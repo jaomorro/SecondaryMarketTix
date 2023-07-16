@@ -1,0 +1,9 @@
+/output/
+/proxies/
+/practice/
+logs.*
+log.*
+/notes.txt
+*.python-version
+/venv/
+*.cnf
