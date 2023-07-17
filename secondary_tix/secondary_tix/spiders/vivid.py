@@ -4,10 +4,12 @@ from bs4 import BeautifulSoup
 from scrapy.selector import Selector
 from datetime import datetime
 import logging
-from .utility import save_to_csv
+from .utility import save_to_csv, create_root_logger
 
-
-logger = logging.getLogger(__name__)
+logger = create_root_logger(
+    output_to_file=False, # Set to True to output logs to file
+    log_filename=f'vivid_{datetime.now().strftime("%Y%m%d%H%M")}.log'
+)
 
 
 class VividSpider(scrapy.Spider):
@@ -15,8 +17,14 @@ class VividSpider(scrapy.Spider):
     allowed_domains = ["https://www.vividseats.com", "www.vividseats.com"]
     start_urls = [] # Put your URL in the list
 
-    current_datetime = datetime.utcnow()
-    file_timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
+    def __init__(self, event_date=None, *args, **kwargs):
+        super(VividSpider, self).__init__(*args, **kwargs)
+        self.event_date_filter = event_date
+        if self.event_date_filter is not None:
+            logger.info(f"Will be filtering for event date: {self.event_date_filter}")
+        current_datetime = datetime.utcnow()
+        self.file_timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
+
 
     def parse(self, response):
         """
@@ -27,9 +35,12 @@ class VividSpider(scrapy.Spider):
             with a JSON of all the listings
         """
 
+        logger.info(f"Response status = {response.status}")
         events = response.css('div.styles_box__QqP94 a.styles_link__1Scjm')
         for event in events:
-            event_date = event.css('p.styles_md__1m2cS.styles_semi-bold__d780p::text').get()
+            extracted_event_date = event.css('p.styles_md__1m2cS.styles_semi-bold__d780p::text').get()
+            logger.info(f"{extracted_event_date = }")
+            event_date = self.format_event_date_filter(extracted_event_date)
             logger.info(f"{event_date = }")
             event_title = event.css('div.styles_col__2dlgD p.styles_md__1m2cS.styles_semi-bold__d780p::text').get()
             logger.info(f"{event_title = }")
@@ -37,6 +48,13 @@ class VividSpider(scrapy.Spider):
             logger.info(f"{event_url = }")
             event_id = event_url.split("/")[-1]
             logger.info(f"{event_id = }")
+
+            # If event date filter is provided, and it doesn't equal the current
+            #   event in the loop, then continue / don not call the URL
+            if self.event_date_filter is not None:
+                if self.event_date_filter != event_date:
+                    logger.info(f"{self.event_date_filter} <> {event_date}")
+                    continue
 
             # This URL will send us to a JSON of all the listings for the game
             ajax_url = f"https://www.vividseats.com/hermes/api/v1/listings?productionId={event_id}&includeIpAddress=true&priceGroupId=277"
@@ -48,6 +66,18 @@ class VividSpider(scrapy.Spider):
             )
 
 
+    def format_event_date_filter(self, event_date_to_format: str)->str:
+        """
+        Format event date into YYYY-MM-DD format
+            Ex: July 24 -> 2023-07-24
+        """
+
+        date_obj = f"{event_date_to_format} {datetime.now().year}"
+        date_obj = datetime.strptime(date_obj, "%b %d %Y")
+        formatted_date = date_obj.strftime("%Y-%m-%d")
+        return formatted_date
+
+
     def parse_event_page(self, response):
         """
         Parse the listings and save them as a CSV
@@ -56,16 +86,16 @@ class VividSpider(scrapy.Spider):
 
         all_listings = []
 
-        date_obj = response.meta.get('event_date')
-        date_obj = f"{date_obj} {datetime.now().year}"
-        date_obj = datetime.strptime(date_obj, "%b %d %Y")
-        event_date = date_obj.strftime("%Y-%m-%d")
+        event_date = response.meta.get('event_date')
+        # date_obj = f"{date_obj} {datetime.now().year}"
+        # date_obj = datetime.strptime(date_obj, "%b %d %Y")
+        # event_date = date_obj.strftime("%Y-%m-%d")
 
         event_title = response.meta.get("event_title")
         event_title_split = event_title.find(" at ")
         opponent = event_title[:event_title_split]
 
-        logger.info(event_date, opponent)
+        logger.info(f"{event_date = }, {opponent = }")
 
         event_date_str = event_date.replace("-","")
 

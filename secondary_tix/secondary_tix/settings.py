@@ -21,6 +21,7 @@ SPIDER_MODULES = ["secondary_tix.spiders"]
 NEWSPIDER_MODULE = "secondary_tix.spiders"
 
 OUTPUT_DIRECTORY = Path(__file__).parents[2]
+LOG_DIRECTORY = Path(__file__).parents[2] / "logs"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent

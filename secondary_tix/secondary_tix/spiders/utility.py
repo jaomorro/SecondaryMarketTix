@@ -1,15 +1,16 @@
 import os
+import sys
 import logging
 from pathlib import Path
 import csv
 from scrapy.utils.project import get_project_settings
-
 
 logger = logging.getLogger(__name__)
 
 
 settings = get_project_settings()
 OUTPUT_DIRECTORY = settings.get('OUTPUT_DIRECTORY')
+LOG_DIRECTORY = settings.get('LOG_DIRECTORY')
 
 
 def create_csv(
@@ -88,3 +89,41 @@ def save_to_csv(
         writer.writerows(data)        
 
 
+def create_root_logger(output_to_file: bool=False, log_filename: str=None):
+    """
+    Create a logger 
+    
+    output_to_file: logs will only be streamed unless this parameter is set to True
+        If True, then logs will be output to a file
+    log_filename: filename that the logs will be output to
+    """
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # Get the logger
+    logger = logging.getLogger()
+
+    # Reset handlers on the logger
+    # Helps avoid multiple handlers
+    logger.handlers = []
+
+    # Create a stream handler
+    sh = logging.StreamHandler(stream=sys.stderr)
+
+    # Add formatter to stream handler
+    sh.setFormatter(formatter)
+
+    # Add stream handler to logger
+    logger.addHandler(sh)
+
+    if output_to_file:
+        if not os.path.exists(LOG_DIRECTORY):
+            os.makedirs(LOG_DIRECTORY)
+        fh = logging.FileHandler(LOG_DIRECTORY / log_filename if log_filename else 'log.txt')
+        fh.setLevel(logging.INFO)
+        logger.addHandler(fh)
+
+    # Set logging level
+    logger.setLevel(logging.INFO)
+
+    return logger

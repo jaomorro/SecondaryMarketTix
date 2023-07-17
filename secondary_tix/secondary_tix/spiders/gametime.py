@@ -5,17 +5,40 @@ from secondary_tix.items import EventListingGametime, EVENT_LISTING_GAMETIME_HEA
 import logging
 from bs4 import BeautifulSoup
 from datetime import datetime, date
-from .utility import create_csv, save_to_csv
+from .utility import create_csv, save_to_csv, create_root_logger
 
-logger = logging.getLogger(__name__)
+logger = create_root_logger(
+    output_to_file=False, # Set to True to output logs to file
+    log_filename=f'gametime_{datetime.now().strftime("%Y%m%d%H%M")}.log'
+)
 
 
-class MySpider(scrapy.Spider):
+class GametimeSpider(scrapy.Spider):
     name = 'gametime'
-    team = "" # name of team
 
-    current_datetime = datetime.utcnow()
-    file_timestamp = current_datetime.strftime("%Y%m%d%H%M")
+    def __init__(self, team=None, event_date=None, *args, **kwargs):
+        super(GametimeSpider, self).__init__(*args, **kwargs)
+        self.event_date_filter = self.format_event_date_filter(event_date)
+        # Pass the team in as an argument or hardcode it below
+        self.team = team 
+        if self.team is None:
+            raise Exception("A team must be provided. See README for further instructions.")
+        
+        current_datetime = datetime.utcnow()
+        self.file_timestamp = current_datetime.strftime("%Y%m%d%H%M")
+
+
+    def format_event_date_filter(self, event_date)-> str:
+        """
+        Format date from YYYY-MM-DD to m-d-Y
+            ex - 2023-07-24 -> 7-24-2023
+        This is the format needed when filtering for a specific URL
+        """
+
+        dt_object = datetime.strptime(event_date, "%Y-%m-%d")
+        formatted_date = dt_object.strftime("%-m-%-d-%Y")
+        return formatted_date
+
     
     def start_requests(self):
         """
@@ -73,6 +96,12 @@ class MySpider(scrapy.Spider):
         # This will filter them out
         # HREFs are of the form: /mlb-baseball/AwayTeam-at-HomeTeam-tickets/date-city-venue/events/event_id
         hrefs = [x for x in hrefs if x.split("/")[2].endswith(f"at-{self.team.lower()}-tickets")]
+        
+        # If event date was provided, then filter for that game's URL
+        if self.event_date_filter is not None:
+            logger.info(f"event_date_filter = {self.event_date_filter} so filtering hrefs")
+            hrefs = [x for x in hrefs if x.split("/")[3].startswith(self.event_date_filter)]
+
         logger.info(f"# of events = {len(hrefs)}")
 
         base_url = "https://gametime.co"
