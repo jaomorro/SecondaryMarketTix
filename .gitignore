@@ -1,9 +1,11 @@
 /output/
 /proxies/
 /practice/
+/logs/
 logs.*
 log.*
 /notes.txt
 *.python-version
 /venv/
 *.cnf
+__pycache__/

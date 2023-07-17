@@ -8,7 +8,6 @@ This will extract listings for the events from the provided starting URL in each
     - Go to the `https://gametime.co`
     - Seach for the Venue you are interested in
     - Copy/Paste the URL into the `start_requests` function
-    - Update the team attribute with the name of team (ex: dodgers)
 
   - Vivid (vivid.py)
     - Go to `https://www.vividseats.com/`
@@ -42,8 +41,14 @@ SCRAPEOPS_API_KEY = API_KEY
 ## How to run
 The spiders can be run via (must be in the same folder as `scrapy.cfg`):
 
-  - scrapy crawl gametime
-  - scrapy crawl vivid
+The following will extract listings for all events
+  - `scrapy crawl gametime -a team=[team-name]`
+    - `team` is a required argument and is just the team nickname of the team whose tickets you are interested in. Ex - dodgers
+  - `scrapy crawl vivid`
+
+If you only want a single event, you can use the `event_date` argument
+  - `scrapy crawl gametime -a team=dodgers -a event_date=2023-07-29`
+  - `scrapy crawl vivid -a event_date=2023-07-29`
 
 By default there is a 15 second download delay but this can be changed in the 
     settings.py file - DOWNLOAD_DELAY variable. 
