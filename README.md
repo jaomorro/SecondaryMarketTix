@@ -1,5 +1,5 @@
 ## Legal Disclaimer
-One should always review the websites and their policy on scraping before using this.
+One should always review the websites and their policies before doing any web scraping.
 
 ## Overview
 This will extract listings for the events from the provided starting URL in each spider. You will need to add the URLs to the spiders before running.
